@@ -78,26 +78,29 @@ def obfuscate_endpoint(payload: ScriptRequest):
     # Step 1: Control Flow Flattening
     flattened_code = apply_control_flow_flattening(code)
     
-    # Step 2: Triple-layer XOR + Arithmetic scrambling keys
+    # Step 2: Quad-layer XOR + Arithmetic scrambling keys
     k1 = random.randint(15, 245)
     k2 = random.randint(15, 245)
     k3 = random.randint(15, 245)
-    k4 = random.randint(1, 5)
+    k4 = random.randint(15, 245)
+    k5 = random.randint(1, 7)
     
     encoded_bytes = []
     for char in flattened_code:
         val = ord(char)
-        val = (val + k4) % 256
+        val = (val + k5) % 256
         val = val ^ k1
-        val = (val - 5) % 256
+        val = (val - 3) % 256
         val = val ^ k2
-        val = (val + 2) % 256
+        val = (val + 4) % 256
         val = val ^ k3
+        val = (val - 2) % 256
+        val = val ^ k4
         encoded_bytes.append(val)
         
     # Step 3: Massive junk variable bloat with randomized names
     junk_pool = []
-    for i in range(25):
+    for i in range(30):
         j_name = f"_0x{random.randint(100000, 999999)}"
         j_val = random.randint(10000, 999999)
         junk_pool.append(f"local {j_name} = ({j_val} * {random.randint(2, 9)}) % {random.randint(1000, 9999)};")
@@ -105,11 +108,11 @@ def obfuscate_endpoint(payload: ScriptRequest):
     random.shuffle(junk_pool)
     junk_block = "\n".join(junk_pool)
 
-    # Step 4: Randomized identifier names for the execution wrapper
+    # Step 4: Randomized identifier names for the execution wrapper and VM
     v_env = f"_0x{random.randint(1000,9999)}"
     v_payload = f"_0x{random.randint(1000,9999)}"
     v_keys = f"_0x{random.randint(1000,9999)}"
-    v_proc = f"_0x{random.randint(1000,9999)}"
+    v_vm = f"_0x{random.randint(1000,9999)}"
     v_d = f"_0x{random.randint(1000,9999)}"
     v_k = f"_0x{random.randint(1000,9999)}"
     v_res = f"_0x{random.randint(1000,9999)}"
@@ -120,6 +123,7 @@ def obfuscate_endpoint(payload: ScriptRequest):
     v_decoded = f"_0x{random.randint(1000,9999)}"
     v_fn = f"_0x{random.randint(1000,9999)}"
     v_check = f"_0x{random.randint(1000,9999)}"
+    v_pc = f"_0x{random.randint(1000,9999)}"
 
     obfuscated_output = f"""-- Obfuscated by aiko v1.0
 {junk_block}
@@ -140,30 +144,35 @@ if not {v_check}() then
     return;
 end;
 local {v_payload} = {{{','.join(map(str, encoded_bytes))}}};
-local {v_keys} = {{{k1}, {k2}, {k3}, {k4}}};
-local function {v_proc}({v_d}, {v_k})
+local {v_keys} = {{{k1}, {k2}, {k3}, {k4}, {k5}}};
+local function {v_vm}({v_d}, {v_k})
     local {v_res} = {{}};
-    for {v_i} = 1, #{v_d} do
-        local {v_v} = {v_d}[{v_i}];
+    local {v_pc} = 1;
+    while {v_pc} <= #{v_d} do
+        local {v_v} = {v_d}[{v_pc}];
+        {v_v} = bit32.bxor({v_v}, {v_k}[4]);
+        {v_v} = ({v_v} + 2) % 256;
         {v_v} = bit32.bxor({v_v}, {v_k}[3]);
-        {v_v} = ({v_v} - 2) % 256;
+        {v_v} = ({v_v} - 4) % 256;
         {v_v} = bit32.bxor({v_v}, {v_k}[2]);
-        {v_v} = ({v_v} + 5) % 256;
+        {v_v} = ({v_v} + 3) % 256;
         {v_v} = bit32.bxor({v_v}, {v_k}[1]);
-        {v_v} = ({v_v} - {v_k}[4]) % 256;
-        {v_res}[{v_i}] = string.char({v_v});
-    end
+        {v_v} = ({v_v} - {v_k}[5]) % 256;
+        {v_res}[{v_pc}] = string.char({v_v});
+        {v_pc} = {v_pc} + 1;
+    end;
     return table.concat({v_res});
 end;
 local {v_x}, {v_err} = pcall(function()
-    local {v_decoded} = {v_proc}({v_payload}, {v_keys});
+    local {v_decoded} = {v_vm}({v_payload}, {v_keys});
     local {v_fn} = loadstring({v_decoded});
     if {v_fn} then
+        setfenv({v_fn}, {v_env});
         {v_fn}();
     end
 end);
 if not {v_x} then
-    warn("Execution Error");
+    warn("VM Execution Error");
 end
 """
 
