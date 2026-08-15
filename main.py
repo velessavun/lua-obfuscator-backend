@@ -1,8 +1,8 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from xor import encrypt_payload
-from vm import apply_control_flow_flattening, build_vm_wrapper
+from xor2_0 import encrypt_payload_v2
+from vm2_0 import apply_control_flow_flattening, build_vm_wrapper_v2
 
 app = FastAPI()
 
@@ -24,13 +24,8 @@ def obfuscate_endpoint(payload: ScriptRequest):
     
     code = payload.script
     
-    # Step 1: Flatten control flow
     flattened_code = apply_control_flow_flattening(code)
-    
-    # Step 2: Quad XOR encrypt payload and generate keys
-    encoded_bytes, keys = encrypt_payload(flattened_code)
-    
-    # Step 3: Build VM, environment checks, and wrap output
-    obfuscated_output = build_vm_wrapper(encoded_bytes, keys)
+    encoded_bytes, keys, rot_shift = encrypt_payload_v2(flattened_code)
+    obfuscated_output = build_vm_wrapper_v2(encoded_bytes, keys, rot_shift)
 
     return {"success": True, "obfuscatedScript": obfuscated_output}
