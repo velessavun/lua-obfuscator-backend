@@ -32,3 +32,28 @@ def encrypt_payload(flattened_code: str):
         prev = val
 
     return encoded_bytes, [k1, k2, k3, k4, k5]
+
+
+def decode_payload(encoded_bytes, keys):
+    """Reference decoder -- exactly mirrors the Lua runtime decode loop in
+    vm.build_vm_wrapper. Used for verification / layered peel tests."""
+    k1, k2, k3, k4, k5 = keys
+    seed = (((k1 ^ k2) ^ k3) ^ k4)
+    seed = (seed + k5) % 256
+    out = []
+    prev = seed
+    for ip in range(1, len(encoded_bytes) + 1):
+        cur = encoded_bytes[ip - 1]
+        i0 = (ip - 1) % 251
+        b = cur ^ prev
+        b = b ^ k4
+        b = (b + 2) % 256
+        b = b ^ k3
+        b = (b - 4) % 256
+        b = b ^ k2
+        b = (b + 3) % 256
+        b = b ^ k1
+        b = (b - k5 - i0) % 256
+        out.append(chr(b))
+        prev = cur
+    return ''.join(out)
