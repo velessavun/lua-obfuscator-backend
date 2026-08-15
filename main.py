@@ -119,10 +119,26 @@ def obfuscate_endpoint(payload: ScriptRequest):
     v_err = f"_0x{random.randint(1000,9999)}"
     v_decoded = f"_0x{random.randint(1000,9999)}"
     v_fn = f"_0x{random.randint(1000,9999)}"
+    v_check = f"_0x{random.randint(1000,9999)}"
 
     obfuscated_output = f"""-- Obfuscated by aiko v1.0
 {junk_block}
 local {v_env} = (getgenv and getgenv()) or _G;
+local function {v_check}()
+    local _s = pcall(function()
+        if debug and debug.sethook then
+            local _h = debug.gethook();
+            if _h ~= nil then error("Debugger hook detected") end;
+        end;
+        if rawget(_G, "Hydroxide") or rawget(_G, "RemoteSpy") or rawget(_G, "ScriptWareSpy") then
+            error("Instrumented environment detected");
+        end;
+    end);
+    return _s;
+end;
+if not {v_check}() then
+    return;
+end;
 local {v_payload} = {{{','.join(map(str, encoded_bytes))}}};
 local {v_keys} = {{{k1}, {k2}, {k3}, {k4}}};
 local function {v_proc}({v_d}, {v_k})
