@@ -31,8 +31,7 @@ def parse_and_apply_directives(code: str) -> str:
         # If a directive is waiting and we hit a function definition, apply it
         if (pending_cff or pending_vm) and ('function' in stripped):
             func_block = []
-            brace_count = stripped.count('function') - stripped.count('end') # basic heuristic or block capture
-            # Capture the full function block
+            brace_count = stripped.count('function') - stripped.count('end')
             func_block.append(line)
             i += 1
             while i < len(lines) and (brace_count > 0 or not lines[i].strip().startswith('end')):
@@ -63,28 +62,24 @@ def parse_and_apply_directives(code: str) -> str:
     code = '\n'.join(processed_lines)
 
     # 2. Handle inline wrapper functions via Regex replacement
-    # MV_CFF(fn, decompose?, mangleExpr?, cfManglePercent?)
     code = re.sub(r'MV_CFF\s*\(\s*(function\b.*?end)\s*(?:,\s*(true|false))?\s*(?:,\s*(true|false))?\s*(?:,\s*(\d+))?\s*\)', 
-                  lambda m: apply_fine_grained_cff(m.group(1), 
-                                                   m.group(2) == 'true' if m.group(2) else False, 
-                                                   m.group(3) == 'true' if m.group(3) else False, 
-                                                   int(m.group(4)) if m.group(4) else 0), 
-                  code, flags=re.DOTALL)
+                lambda m: apply_fine_grained_cff(m.group(1), 
+                                                 m.group(2) == 'true' if m.group(2) else False, 
+                                                 m.group(3) == 'true' if m.group(3) else False, 
+                                                 int(m.group(4)) if m.group(4) else 0), 
+                code, flags=re.DOTALL)
 
-    # MV_VM(fn, vmType?)
     code = re.sub(r'MV_VM\s*\(\s*(function\b.*?end)\s*(?:,\s*["\'](\w+)["\'])?\s*\)', 
-                  lambda m: apply_vm_virtualization(m.group(1), m.group(2) or "fox"), 
-                  code, flags=re.DOTALL)
+                lambda m: apply_vm_virtualization(m.group(1), m.group(2) or "fox"), 
+                code, flags=re.DOTALL)
 
-    # MV_ENC_STR(str, key, rtKey)
     code = re.sub(r'MV_ENC_STR\s*\(\s*["\'](.*?)["\']\s*,\s*["\'](.*?)["\']\s*,\s*(.*?)\s*\)', 
-                  lambda m: encrypt_string_directive(m.group(1), m.group(2), m.group(3)), 
-                  code)
+                lambda m: encrypt_string_directive(m.group(1), m.group(2), m.group(3)), 
+                code)
 
-    # MV_ENC_FUNC(fn, key, rtKey)
     code = re.sub(r'MV_ENC_FUNC\s*\(\s*(function\b.*?end)\s*,\s*["\'](.*?)["\']\s*,\s*(.*?)\s*\)', 
-                  lambda m: encrypt_func_directive(m.group(1), m.group(2), m.group(3)), 
-                  code, flags=re.DOTALL)
+                lambda m: encrypt_func_directive(m.group(1), m.group(2), m.group(3)), 
+                code, flags=re.DOTALL)
 
     return code
 
@@ -95,7 +90,6 @@ def apply_fine_grained_cff(func_code: str, decompose: bool, mangle: bool, percen
         stripped = line.strip()
         if stripped and not stripped.startswith('--') and not stripped.startswith('function') and not stripped.startswith('end'):
             if mangle:
-                # Basic identifier/expression scrambling simulation
                 line = line.replace('+', ' + 0b1 - 0b1 +')
             statements.append(line)
         elif stripped.startswith('function') or stripped.startswith('end'):
@@ -118,7 +112,6 @@ def apply_fine_grained_cff(func_code: str, decompose: bool, mangle: bool, percen
     if decompose:
         random.shuffle(states)
 
-    # Insert fake branches if percent > 0
     if percent > 0:
         fake_count = max(1, int(len(states) * (percent / 100.0)))
         for _ in range(fake_count):
@@ -157,12 +150,10 @@ def apply_fine_grained_cff(func_code: str, decompose: bool, mangle: bool, percen
     return '\n'.join(flattened)
 
 def apply_vm_virtualization(func_code: str, vm_type: str) -> str:
-    # Virtualize target function into abstracted ISA layout for 'fox' or 'skid'
     v_name = f"_0x{random.randint(1000,9999)}"
     return f"(function() -- VM Virtualized [{vm_type}]\n    local {v_name} = {func_code};\n    return {v_name};\nend)()"
 
 def encrypt_string_directive(target_str: str, build_key: str, rt_key_expr: str) -> str:
-    # Build-time encryption wrapper with runtime validation check
     encoded = [ord(c) ^ ord(build_key[i % len(build_key)]) for i, c in enumerate(target_str)]
     v_arr = f"{{{','.join(map(str, encoded))}}}"
     return f"(function() if {rt_key_expr} == \"{build_key}\" then local r = {{}}; for k,v in ipairs({v_arr}) do r[k] = string.char(v ~ ord(\"{build_key}\"[ (k-1) % #{build_key} + 1 ])); end return table.concat(r); else return \"\"; end end)()"
@@ -176,22 +167,17 @@ def apply_control_flow_flattening(code: str) -> str:
     return parse_and_apply_directives(code)
 
 def build_vm_wrapper_v2(encoded_bytes, keys, rot_shift):
-    import random
-    
-    # Generate unique obfuscated variable names
     v_env = f"_0x{random.randint(1000,9999)}"
     v_check = f"_0x{random.randint(1000,9999)}"
     v_bundle = f"_0x{random.randint(1000,9999)}"
     v_keys = f"_0x{random.randint(1000,9999)}"
     v_rot = f"_0x{random.randint(1000,9999)}"
     
-    # Generate standard junk block for signature disruption
     junk_vars = [f"_0x{random.randint(10000,99999)}" for _ in range(3)]
     junk_block = f"local {junk_vars[0]} = math.random(1, 100);\n" \
                  f"local {junk_vars[1]} = '{random.randint(11111,99999)}';\n" \
                  f"local {junk_vars[2]} = function() return {junk_vars[0]} end;"
 
-    # Full wrapper payload with integrated environment integrity & anti-envlogger checks
     obfuscated_output = f"""-- Obfuscated by aiko v1.0
 {junk_block}
 local {v_env} = (getgenv and getgenv()) or _G;
