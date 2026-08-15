@@ -53,91 +53,26 @@ def apply_control_flow_flattening(code: str) -> str:
     return flattened
 
 def build_vm_wrapper(encoded_bytes, keys):
-    # Massive junk variable bloat with randomized names
+    # Massive junk variable bloat using binary and arithmetic scrambling constants
     junk_pool = []
     for i in range(35):
         j_name = f"_0x{random.randint(100000, 999999)}"
-        j_val = random.randint(10000, 999999)
-        junk_pool.append(f"local {j_name} = ({j_val} * {random.randint(2, 9)}) % {random.randint(1000, 9999)};")
+        j_val = random.randint(0b1000, 0b11111111)
+        junk_pool.append(f"local {j_name} = ({j_val} * 0b10) + {random.randint(1, 15)};")
     
     random.shuffle(junk_pool)
     junk_block = "\n".join(junk_pool)
 
-    # Randomized ISA Opcode values unique to this build
-    op_fetch = random.randint(11, 44)
-    op_transform = random.randint(45, 88)
-    op_store = random.randint(89, 120)
-    op_halt = random.randint(121, 250)
-
-    # Randomized identifier names for runtime variables
+    # Randomized identifier names for runtime safety
     v_env = f"_0x{random.randint(1000,9999)}"
     v_bundle = f"_0x{random.randint(1000,9999)}"
     v_keys = f"_0x{random.randint(1000,9999)}"
-    v_vm = f"_0x{random.randint(1000,9999)}"
-    v_stream = f"_0x{random.randint(1000,9999)}"
-    v_kmap = f"_0x{random.randint(1000,9999)}"
-    v_ctx = f"_0x{random.randint(1000,9999)}"
-    v_ip = f"_0x{random.randint(1000,9999)}"
-    v_inst = f"_0x{random.randint(1000,9999)}"
-    v_acc = f"_0x{random.randint(1000,9999)}"
+    v_vm_core = f"_0x{random.randint(1000,9999)}"
     v_x = f"_0x{random.randint(1000,9999)}"
     v_err = f"_0x{random.randint(1000,9999)}"
     v_code = f"_0x{random.randint(1000,9999)}"
     v_fn = f"_0x{random.randint(1000,9999)}"
     v_check = f"_0x{random.randint(1000,9999)}"
-
-    # Selection of custom VM architectural implementations
-    vm_variant = random.choice([1, 2])
-
-    if vm_variant == 1:
-        # Architecture Variant A: Register-Stack Hybrid VM Dispatcher
-        vm_logic = f"""
-local function {v_vm}({v_stream}, {v_kmap})
-    local {v_ctx} = {{}};
-    local {v_ip} = 1;
-    local {v_acc} = {{}};
-    while {v_ip} <= #{v_stream} do
-        local {v_inst} = {v_stream}[{v_ip}];
-        -- Custom ISA Instruction Dispatch
-        {v_inst} = bit32.bxor({v_inst}, {v_kmap}[4]);
-        {v_inst} = ({v_inst} + 3) % 256;
-        {v_inst} = bit32.bxor({v_inst}, {v_kmap}[3]);
-        {v_inst} = ({v_inst} - 5) % 256;
-        {v_inst} = bit32.bxor({v_inst}, {v_kmap}[2]);
-        {v_inst} = ({v_inst} + 2) % 256;
-        {v_inst} = bit32.bxor({v_inst}, {v_kmap}[1]);
-        {v_inst} = ({v_inst} - {v_kmap}[5]) % 256;
-        
-        {v_acc}[{v_ip}] = string.char({v_inst});
-        {v_ip} = {v_ip} + 1;
-    end;
-    return table.concat({v_acc});
-end;
-"""
-    else:
-        # Architecture Variant B: Accumulator-State Virtual Machine Pipeline
-        vm_logic = f"""
-local function {v_vm}({v_stream}, {v_kmap})
-    local {v_acc} = {{}};
-    local {v_ip} = 1;
-    local {v_inst} = 0;
-    repeat
-        {v_inst} = {v_stream}[{v_ip}];
-        if not {v_inst} then break end;
-        {v_inst} = bit32.bxor({v_inst}, {v_kmap}[1]);
-        {v_inst} = ({v_inst} + {v_kmap}[5]) % 256;
-        {v_inst} = bit32.bxor({v_inst}, {v_kmap}[2]);
-        {v_inst} = ({v_inst} - 2) % 256;
-        {v_inst} = bit32.bxor({v_inst}, {v_kmap}[3]);
-        {v_inst} = ({v_inst} + 5) % 256;
-        {v_inst} = bit32.bxor({v_inst}, {v_kmap}[4]);
-        
-        {v_acc}[{v_ip}] = string.char({v_inst});
-        {v_ip} = {v_ip} + 1;
-    until {v_ip} > #{v_stream};
-    return table.concat({v_acc});
-end;
-"""
 
     obfuscated_output = f"""-- Obfuscated by aiko v1.0
 {junk_block}
@@ -157,11 +92,48 @@ end;
 if not {v_check}() then
     return;
 end;
+
 local {v_bundle} = {{{','.join(map(str, encoded_bytes))}}};
 local {v_keys} = {{{keys[0]}, {keys[1]}, {keys[2]}, {keys[3]}, {keys[4]}}};
-{vm_logic}
+
+local {v_vm_core} = (function()
+    local function _unpack_node(_arr, _idx, _lim)
+        if _idx > _lim then return end;
+        return _arr[_idx], _unpack_node(_arr, _idx + 0b1, _lim);
+    end;
+    
+    local function _decoder_pipeline(_stream, _kmap)
+        local _out = {{}};
+        local _ip = 0b1;
+        while _ip <= #{v_bundle} do
+            local _byte = _stream[_ip];
+            _byte = bit32.bxor(_byte, _kmap[4]);
+            _byte = (_byte + 2) % 256;
+            _byte = bit32.bxor(_byte, _kmap[3]);
+            _byte = (_byte - 4) % 256;
+            _byte = bit32.bxor(_byte, _kmap[2]);
+            _byte = (_byte + 3) % 256;
+            _byte = bit32.bxor(_byte, _kmap[1]);
+            _byte = (_byte - _kmap[5]) % 256;
+            
+            _out[_ip] = string.char(_byte);
+            _ip = _ip + 0b1;
+        end;
+        return table.concat(_out);
+    end;
+    
+    return {{
+        d = function(_o)
+            return _unpack_node(_o, 0b1, #{v_bundle});
+        end,
+        i = function(_b)
+            return _decoder_pipeline(_b, {v_keys});
+        end
+    }};
+end)();
+
 local {v_x}, {v_err} = pcall(function()
-    local {v_code} = {v_vm}({v_bundle}, {v_keys});
+    local {v_code} = {v_vm_core}.i({v_bundle});
     local {v_fn} = loadstring({v_code});
     if {v_fn} then
         setfenv({v_fn}, {v_env});
@@ -169,7 +141,7 @@ local {v_x}, {v_err} = pcall(function()
     end
 end);
 if not {v_x} then
-    warn("Custom VM Bundle Execution Failure");
+    warn("Advanced VM Bundle Execution Failure");
 end
 """
     return obfuscated_output
